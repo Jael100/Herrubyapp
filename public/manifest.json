@@ -1,0 +1,9 @@
+{
+  "short_name": "Her Ruby",
+  "name": "Her Ruby — Midlife Vitality Platform",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#7D1A1D",
+  "background_color": "#FDF9F6"
+}
