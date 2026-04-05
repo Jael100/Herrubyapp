@@ -39,7 +39,7 @@ export default function MyBodyScreen({profile}){
         <div style={{position:"relative",zIndex:1}}>
           <Sans s={{color:"rgba(255,255,255,0.7)",fontSize:F.sm,letterSpacing:"0.16em",display:"block",marginBottom:8}}>GOOD MORNING</Sans>
           <Serif as="h1" s={{color:"white",fontSize:F.hero,fontWeight:700,display:"block",marginBottom:8}}>{name} ✦</Serif>
-          <Sans s={{color:"rgba(255,255,255,0.8)",fontSize:F.md,display:"block",marginBottom:16}}>Midlife Vitality Platform · Women 45–65</Sans>
+          <Sans s={{color:"rgba(255,255,255,0.8)",fontSize:F.md,display:"block",marginBottom:16}}>Midlife Vitality Platform · Women 40 and above</Sans>
           {profile?.symptoms?.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>{profile.symptoms.slice(0,3).map(s=><span key={s} style={{background:"rgba(255,255,255,0.18)",color:"white",borderRadius:20,padding:"6px 14px",fontFamily:"'DM Sans',sans-serif",fontSize:F.sm}}>{s}</span>)}</div>}
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {[["checkin","Daily Check-In"],["trends","My Trends"],["actions","Work Actions"]].map(([v,l])=>(

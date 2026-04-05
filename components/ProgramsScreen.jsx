@@ -17,7 +17,7 @@ const ALL_EVENTS=[
   {id:"wl1",cat:"Wellness",name:"Tai Chi in the Park",icon:"🌿",color:C.sage,price:15,desc:"Outdoor balance and mindfulness at Gage Park.",next:"Sat Mar 22 · 9:00 AM",spots:12,host:"Min Li"},
   {id:"cr1",cat:"Creative",name:"Watercolour Workshop",icon:"🎨",color:C.lavender,price:28,desc:"Beginner-friendly painting. All supplies included.",next:"Tue Mar 25 · 1:00 PM",spots:10,host:"Angela Morris"},
   {id:"cr2",cat:"Creative",name:"Anti-Inflammatory Cooking",icon:"🥗",color:C.sage,price:38,desc:"Cook meals proven to reduce joint inflammation.",next:"Sun Mar 23 · 2:00 PM",spots:6,host:"Chef Dionne Wallace"},
-  {id:"sc1",cat:"Social",name:"Brampton Lunch Club",icon:"☕",color:C.ruby,price:0,desc:"Monthly lunch at a local restaurant.",next:"Fri Mar 28 · 12:00 PM",spots:15,host:"Her Ruby"},
+  {id:"sc1",cat:"Social",name:"Ontario Lunch Club",icon:"☕",color:C.ruby,price:0,desc:"Monthly lunch at a local restaurant.",next:"Fri Mar 28 · 12:00 PM",spots:15,host:"Her Ruby"},
   {id:"out1",cat:"Outdoor",name:"Nordic Walking Clinic",icon:"🚶‍♀️",color:C.sage,price:15,desc:"Low-impact full-body walk using poles.",next:"Sat Mar 22 · 9:00 AM",spots:8,host:"Certified NW Instructor"},
   {id:"le1",cat:"Learning",name:"Smartphone Safety Workshop",icon:"📱",color:C.indigo,price:0,desc:"Avoid scams, use apps safely.",next:"Thu Mar 27 · 2:00 PM",spots:20,host:"Digital Literacy Canada"},
   {id:"le2",cat:"Learning",name:"Solo Travel Confidence",icon:"✈️",color:C.gold,price:0,desc:"Plan and enjoy solo travel safely.",next:"Thu Mar 27 · 6:00 PM",spots:20,host:"Linda Marsh"},

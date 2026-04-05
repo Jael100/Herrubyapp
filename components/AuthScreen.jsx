@@ -144,7 +144,7 @@ export default function AuthScreen({ onAuthSuccess }) {
           <div style={{ fontSize: 72, marginBottom: 24, lineHeight: 1 }}>♦</div>
           <Serif as="h1" s={{ fontSize: 52, color: 'white', fontWeight: 700, lineHeight: 1.2, display: 'block', marginBottom: 16 }}>Her Ruby</Serif>
           <Sans s={{ fontSize: F.lg, color: 'rgba(255,255,255,0.82)', lineHeight: 1.8, display: 'block', maxWidth: 320, margin: '0 auto 40px' }}>
-            Midlife Vitality Platform for women 45–65
+            Midlife Vitality Platform for women 40 and above
           </Sans>
           {/* OAuth buttons on welcome screen */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 360, margin: '0 auto', width: '100%' }}>

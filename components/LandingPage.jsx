@@ -114,7 +114,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
             color: 'rgba(255,255,255,0.82)', fontSize: 'clamp(16px, 2vw, 20px)',
             lineHeight: 1.75, display: 'block', marginBottom: 44, maxWidth: 560, margin: '0 auto 44px',
           }}>
-            Her Ruby helps women 45–65 navigate menopause, burnout and life transitions —
+            Her Ruby helps women in her midlife navigate menopause, burnout and life transitions —
             with programmes, community, expert knowledge and a wellness wallet funded by you or your employer.
           </Sans>
 
@@ -421,7 +421,7 @@ export default function LandingPage({ onGetStarted, onSignIn }) {
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const FEATURES = [
   { icon: '◉', title: 'My Body', color: '#B8292F', desc: 'Track energy, brain fog, stress and sleep. Get plain-language explanations of what\'s happening hormonally — and what to do about it.' },
-  { icon: '◈', title: 'Programmes & Experiences', color: '#B8862A', desc: 'Book signature 4–6 week programmes, social outings, creative workshops and outdoor experiences — all designed for women 45–65.' },
+  { icon: '◈', title: 'Programmes & Experiences', color: '#B8862A', desc: 'Book signature 1–6 week programmes, social outings, creative workshops and outdoor experiences — all designed for women in her midlife.' },
   { icon: '❋', title: 'Ruby Circle', color: '#5E8C61', desc: 'Join small, verified, women-only circles organised by interest and life stage. Real connection, not social media noise.' },
   { icon: '◆', title: 'Wellness Wallet', color: '#5C6BC0', desc: 'Fund your wellness with credits from your employer, a self top-up, or a gift from a loved one. Redeemable across the whole platform.' },
   { icon: '♦', title: 'Knowledge Hub', color: '#27AE8F', desc: 'Live expert sessions and on-demand content covering menopause, career performance, financial planning, nutrition and more.' },
@@ -437,7 +437,7 @@ const HOW_STEPS = [
 
 const TESTIMONIALS = [
   { quote: 'I was running on empty for two years. Her Ruby gave me language for what was happening and a community who actually got it. My energy score went from 3 to 7 in six weeks.', name: 'Margaret T.', role: 'Senior Director, 58 · Toronto' },
-  { quote: 'My employer funds my credits through their wellness benefit. I\'ve attended 12 sessions and my brain fog has basically disappeared. My manager noticed before I did.', name: 'Diane L.', role: 'Project Manager, 52 · Brampton' },
+  { quote: 'My employer funds my credits through their wellness benefit. I\'ve attended 12 sessions and my brain fog has basically disappeared. My manager noticed before I did.', name: 'Diane L.', role: 'Project Manager, 52 · Ontario' },
   { quote: 'I was sceptical about another "wellness app." This is different. The women in my Circle have become real friends. We walk together on Saturdays now.', name: 'Carol S.', role: 'Recently Retired, 64 · Mississauga' },
 ];
 
