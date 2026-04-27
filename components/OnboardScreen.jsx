@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { C, F } from '../lib/constants';
 import { Serif, Sans, Btn } from './UI';
-import { api } from '../lib/api';
 
 const STEPS = [
   { key:'age',       type:'choice', q:"What's your age range?",              opts:["45–50","51–55","56–60","61–65","66+"] },
@@ -44,17 +43,15 @@ export default function OnboardScreen({ onComplete }) {
 
   async function finish(finalAnswers) {
     setSaving(true);
-    try {
-      await api.profile.saveOnboarding({
-        age_range: finalAnswers.age,
-        work_context: finalAnswers.context,
-        menopause_stage: finalAnswers.menopause,
-        goals: finalAnswers.goals || [],
-        tracked_symptoms: finalAnswers.symptoms || [],
-      });
-    } catch (_) { /* non-blocking — local state still updates */ }
+    const payload = {
+      age_range: finalAnswers.age,
+      work_context: finalAnswers.context,
+      menopause_stage: finalAnswers.menopause,
+      goals: finalAnswers.goals || [],
+      tracked_symptoms: finalAnswers.symptoms || [],
+    };
+    await onComplete(payload);
     setSaving(false);
-    onComplete(finalAnswers);
   }
 
   return (

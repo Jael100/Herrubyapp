@@ -16,6 +16,7 @@ export default function AuthScreen({ onAuthSuccess }) {
   const [confirm, setConfirm]   = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent]   = useState(false);
+  const [signupSent, setSignupSent]   = useState(false);
   const [err, setErr]           = useState('');
   const [loading, setLoading]   = useState('');
 
@@ -32,7 +33,11 @@ export default function AuthScreen({ onAuthSuccess }) {
     const { data, error } = await signUpWithEmail({ name: name.trim(), email, password });
     setLoading('');
     if (error) { setErr(error.message); return; }
-    if (data.user) onAuthSuccess(data.user);
+    if (data.session) {
+      onAuthSuccess(data.user);
+    } else if (data.user) {
+      setSignupSent(true);
+    }
   }
 
   // ── Email login ───────────────────────────────────────────────────────────
@@ -208,6 +213,28 @@ export default function AuthScreen({ onAuthSuccess }) {
               <Btn onClick={() => { setMode('login'); setForgotSent(false); }} v="ghost" s={{ padding: '14px 28px', fontSize: F.md }}>Back to Sign In</Btn>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── SIGNUP CONFIRMATION (email verification required) ─────────────────────
+  if (mode === 'signup' && signupSent) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.cream, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: `linear-gradient(135deg, ${C.rubyDeep}, ${C.ruby})`, padding: '56px 26px 32px' }}>
+          <Serif as="h1" s={{ color: 'white', fontSize: 32, fontWeight: 700, display: 'block' }}>Almost there</Serif>
+          <Sans s={{ color: 'rgba(255,255,255,0.75)', fontSize: F.md, display: 'block', marginTop: 6 }}>Confirm your email to finish signing up</Sans>
+        </div>
+        <div style={{ flex: 1, padding: '32px 26px', textAlign: 'center', paddingTop: 60 }}>
+          <div style={{ fontSize: 52, marginBottom: 20 }}>📧</div>
+          <Serif s={{ fontSize: F.xxl, color: C.slate, display: 'block', marginBottom: 10 }}>Check your inbox</Serif>
+          <Sans s={{ fontSize: F.md, color: C.muted, display: 'block', lineHeight: 1.7, marginBottom: 24 }}>
+            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then sign in.
+          </Sans>
+          <Btn onClick={() => { setMode('login'); setSignupSent(false); setPass(''); setConfirm(''); }} v="ghost" s={{ padding: '14px 28px', fontSize: F.md }}>
+            Back to Sign In
+          </Btn>
         </div>
       </div>
     );
