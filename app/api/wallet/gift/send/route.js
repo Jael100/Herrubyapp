@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createServerClient } from '../../../../../lib/supabase-server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 function generateGiftCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -67,6 +71,8 @@ export async function POST(req) {
 
     // Send gift email
     try {
+      const resend = getResend();
+      if (!resend) throw new Error('RESEND_API_KEY not configured');
       await resend.emails.send({
         from: 'onboarding@resend.dev',
         to: recipientEmail,
