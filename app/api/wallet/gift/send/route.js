@@ -74,7 +74,7 @@ export async function POST(req) {
       const resend = getResend();
       if (!resend) throw new Error('RESEND_API_KEY not configured');
       await resend.emails.send({
-        from: 'onboarding@resend.dev',
+        from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
         to: recipientEmail,
         subject: 'Someone sent you a Her Ruby wellness gift!',
         html: `
