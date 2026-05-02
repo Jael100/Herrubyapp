@@ -1,7 +1,81 @@
 -- ============================================================
--- Her Ruby — Wallet & Gift System Database Schema
+-- Her Ruby — Database Schema (Profiles + Wallet & Gift System)
 -- Run this in your Supabase SQL Editor: https://supabase.com/dashboard
 -- ============================================================
+
+-- 0. Profiles table — extended user data linked to auth.users
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  age_range TEXT,
+  work_context TEXT,
+  menopause_stage TEXT,
+  goals TEXT[],
+  tracked_symptoms TEXT[],
+  notification_prefs JSONB DEFAULT '{}'::jsonb,
+  kyc_status TEXT DEFAULT 'pending' CHECK (kyc_status IN ('pending','submitted','verified','rejected')),
+  onboarding_complete BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
+
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION create_profile_for_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO profiles (id, name, email)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', ''),
+    NEW.email
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
+CREATE TRIGGER on_auth_user_created_profile
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION create_profile_for_user();
+
+-- Auto-update updated_at on profile changes
+CREATE OR REPLACE FUNCTION update_profile_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS profile_updated_at ON profiles;
+CREATE TRIGGER profile_updated_at
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION update_profile_timestamp();
+
+-- RLS for profiles
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert own profile" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+-- Backfill profiles for existing users
+INSERT INTO profiles (id, name, email)
+SELECT id,
+       COALESCE(raw_user_meta_data->>'name', raw_user_meta_data->>'full_name', ''),
+       email
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
 
 -- 1. Wallets table — one per user
 CREATE TABLE IF NOT EXISTS wallets (
