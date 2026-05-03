@@ -31,6 +31,11 @@ export default function WalletScreen(){
   const [redeemLoading,setRedeemLoading]=useState(false);
   const [redeemResult,setRedeemResult]=useState(null);
   const [redeemError,setRedeemError]=useState("");
+  // Employer code state
+  const [empCode,setEmpCode]=useState("");
+  const [empLoading,setEmpLoading]=useState(false);
+  const [empResult,setEmpResult]=useState(null);
+  const [empError,setEmpError]=useState("");
 
   async function handleTopUp() {
     if (!selPkg) return;
@@ -71,6 +76,21 @@ export default function WalletScreen(){
       alert(err.message || 'Gift send failed. Please try again.');
     }
     setGiftLoading(false);
+  }
+
+  async function handleEmployerActivate() {
+    if (!empCode.trim()) return;
+    setEmpLoading(true); setEmpError(""); setEmpResult(null);
+    try {
+      const r = await api.wallet.activateEmployer(empCode.trim());
+      setEmpResult(r);
+      addCredits(r.credits, {date:"Today",desc:`Employer credits: ${r.employer}`,credits:+r.credits,icon:"💼",color:C.indigo});
+      refresh();
+    } catch (err) {
+      setEmpError(err?.message || 'Invalid or already activated code.');
+    } finally {
+      setEmpLoading(false);
+    }
   }
 
   async function handleRedeem() {
@@ -164,6 +184,23 @@ export default function WalletScreen(){
           {redeemResult&&<div style={{background:C.sagePale,borderRadius:12,padding:"12px 16px",marginTop:12}}>
             <Sans s={{fontSize:F.md,color:C.sage,fontWeight:600}}>+{redeemResult.credits} credits added to your wallet!</Sans>
             {redeemResult.message&&<Sans s={{fontSize:F.sm,color:C.muted,display:"block",marginTop:6,fontStyle:"italic"}}>"{redeemResult.message}"</Sans>}
+          </div>}
+        </div>
+
+        {/* Employer Code Activation */}
+        <div style={{background:"white",borderRadius:22,padding:"22px 22px",boxShadow:"0 3px 14px rgba(0,0,0,0.05)",marginBottom:20,border:`2px solid ${C.indigoPale}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+            <span style={{fontSize:24}}>💼</span>
+            <Serif s={{fontSize:F.xl,color:C.slate,fontWeight:700}}>Got an employer code?</Serif>
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <input type="text" value={empCode} onChange={e=>setEmpCode(e.target.value.toUpperCase())} placeholder="EMPLOYER-CODE"
+              style={{flex:1,padding:"13px 16px",border:`2px solid ${C.faint}`,borderRadius:12,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,color:C.slate,outline:"none",background:"#FAFAFA",letterSpacing:"0.08em",fontWeight:600}}/>
+            <Btn onClick={handleEmployerActivate} disabled={!empCode.trim()||empLoading} v="indigo" s={{padding:"13px 20px",fontSize:F.sm}}>{empLoading?'...':'Activate'}</Btn>
+          </div>
+          {empError&&<Sans s={{fontSize:F.sm,color:C.ruby,display:"block",marginTop:10}}>{empError}</Sans>}
+          {empResult&&<div style={{background:C.indigoPale,borderRadius:12,padding:"12px 16px",marginTop:12}}>
+            <Sans s={{fontSize:F.md,color:C.indigo,fontWeight:600}}>+{empResult.credits} credits from {empResult.employer}!</Sans>
           </div>}
         </div>
 

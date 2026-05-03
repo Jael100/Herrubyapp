@@ -28,10 +28,24 @@ export default function MyBodyScreen({profile}){
   const [today,setToday]=useState({energy:4,brainfog:5,stress:3,sleep:7,hotflash:2,mood:5});
   const [energy,setEnergy]=useState(3);
   const [entered,setEntered]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [saveErr,setSaveErr]=useState("");
   const [view,setView]=useState("checkin");
   const [activeKey,setActiveKey]=useState("energy");
   const sym=SYMS.find(s=>s.key===activeKey)||SYMS[0];
   const weekData=HIST[activeKey]?.[0]||[];
+
+  async function saveEntry(){
+    setSaving(true); setSaveErr("");
+    try {
+      await api.body.saveLog({ symptoms: { ...today, work_energy: energy } });
+      setEntered(true);
+    } catch (err) {
+      setSaveErr(err?.message || 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
   return(
     <div style={{paddingBottom:90}}>
       <div style={{background:`linear-gradient(150deg,${C.rubyDeep} 0%,${C.ruby} 60%,#D44 100%)`,padding:"58px 26px 34px",position:"relative",overflow:"hidden"}}>
@@ -74,7 +88,8 @@ export default function MyBodyScreen({profile}){
               <div style={{display:"flex",justifyContent:"space-between"}}><Sans s={{fontSize:F.xs,color:C.muted}}>1 — {sym.scale[0]}</Sans><Sans s={{fontSize:F.xs,color:C.muted}}>10 — {sym.scale[5]}</Sans></div>
             </div>
           ))}
-          <Btn onClick={()=>setEntered(true)} s={{width:"100%",padding:"18px 0",fontSize:F.lg,marginTop:8}}>Save Today's Entry ✦</Btn>
+          {saveErr&&<div style={{background:"#FEE8E8",borderRadius:12,padding:"12px 16px",marginBottom:12,border:"1px solid #FCA5A5"}}><Sans s={{color:"#B91C1C",fontSize:F.sm}}>{saveErr}</Sans></div>}
+          <Btn onClick={saveEntry} disabled={saving} s={{width:"100%",padding:"18px 0",fontSize:F.lg,marginTop:8}}>{saving?'Saving…':"Save Today's Entry ✦"}</Btn>
         </div>
       )}
       {view==="checkin"&&entered&&(

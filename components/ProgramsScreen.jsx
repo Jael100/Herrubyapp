@@ -22,15 +22,40 @@ const ALL_EVENTS=[
   {id:"le1",cat:"Learning",name:"Smartphone Safety Workshop",icon:"📱",color:C.indigo,price:0,desc:"Avoid scams, use apps safely.",next:"Thu Mar 27 · 2:00 PM",spots:20,host:"Digital Literacy Canada"},
   {id:"le2",cat:"Learning",name:"Solo Travel Confidence",icon:"✈️",color:C.gold,price:0,desc:"Plan and enjoy solo travel safely.",next:"Thu Mar 27 · 6:00 PM",spots:20,host:"Linda Marsh"},
 ];
-function PayModal({event,onClose,onConfirm,walletBalance=0,onUseCredits}){
+function PayModal({event,onClose,onConfirm,walletBalance=0,onUseCredits,onWalletRefresh}){
   const [method,setMethod]=useState(null);
   const [paid,setPaid]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const [errMsg,setErrMsg]=useState("");
   if(!event)return null;
   const isFree=event.price===0;
   const creditsNeeded=Math.ceil(event.price/20);
   const canPayWithWallet=walletBalance>=creditsNeeded&&event.price>0;
   const total=(event.price*1.13).toFixed(2);
-  function handlePay(){if(method==="wallet"&&onUseCredits)onUseCredits(creditsNeeded);setPaid(true);}
+  async function handlePay(){
+    setLoading(true); setErrMsg("");
+    try {
+      const payment_method = isFree ? 'free' : method==='wallet' ? 'wallet' : 'stripe';
+      const result = await api.programs.book({
+        program_id: event.id,
+        program_name: event.name,
+        payment_method,
+        price_cad: event.price,
+        credits: creditsNeeded,
+      });
+      if (result?.mode === 'stripe' && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+      if (payment_method === 'wallet' && onUseCredits) onUseCredits(creditsNeeded);
+      if (onWalletRefresh) onWalletRefresh();
+      setPaid(true);
+    } catch (err) {
+      setErrMsg(err?.message || 'Booking failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,10,10,0.65)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:C.cream,borderRadius:"28px 28px 0 0",width:"100%",maxWidth:430,padding:"30px 26px 54px",maxHeight:"92vh",overflowY:"auto"}}>
@@ -61,8 +86,9 @@ function PayModal({event,onClose,onConfirm,walletBalance=0,onUseCredits}){
                 {method==="card"&&<div style={{background:"white",borderRadius:14,padding:"18px",border:`2px solid ${C.faint}`,marginBottom:18}}><input placeholder="Card number" style={{width:"100%",border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,color:C.slate,marginBottom:14,background:"transparent",display:"block"}}/><div style={{display:"flex",gap:14}}><input placeholder="MM / YY" style={{flex:1,border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,color:C.slate,background:"transparent"}}/><input placeholder="CVV" style={{width:80,border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,color:C.slate,background:"transparent"}}/></div></div>}
               </div>
             )}
-            <Btn onClick={handlePay} disabled={!isFree&&!method} s={{width:"100%",padding:"17px 0",fontSize:F.lg,marginTop:8}} v={isFree?"sage":method==="wallet"?"gold":"primary"}>
-              {isFree?"Reserve Free Spot ✦":method==="wallet"?`Pay with ${creditsNeeded} Credits ✦`:`Pay $${total} ✦`}
+            {errMsg&&<div style={{background:"#FEE8E8",borderRadius:12,padding:"12px 16px",marginTop:8,marginBottom:8,border:"1px solid #FCA5A5"}}><Sans s={{color:"#B91C1C",fontSize:F.sm}}>{errMsg}</Sans></div>}
+            <Btn onClick={handlePay} disabled={(!isFree&&!method)||loading} s={{width:"100%",padding:"17px 0",fontSize:F.lg,marginTop:8}} v={isFree?"sage":method==="wallet"?"gold":"primary"}>
+              {loading?'Processing…':isFree?"Reserve Free Spot ✦":method==="wallet"?`Pay with ${creditsNeeded} Credits ✦`:`Pay $${total} ✦`}
             </Btn>
             <Sans s={{fontSize:F.sm,color:C.muted,display:"block",textAlign:"center",marginTop:14}}>🔒 Secure · Cancel up to 24 hrs before</Sans>
           </div>
@@ -79,7 +105,7 @@ function PayModal({event,onClose,onConfirm,walletBalance=0,onUseCredits}){
   );
 }
 export default function ProgramsScreen({kycVerified=false,onStartKYC}){
-  const { balance: walletBalance, deductCredits: onUseCredits } = useWallet();
+  const { balance: walletBalance, deductCredits: onUseCredits, refresh: onWalletRefresh } = useWallet();
   const [cat,setCat]=useState("All");
   const [schedule,setSchedule]=useState("Any time");
   const [expanded,setExpanded]=useState(null);
@@ -97,7 +123,7 @@ export default function ProgramsScreen({kycVerified=false,onStartKYC}){
 
   return(
     <div style={{paddingBottom:90}}>
-      {payEvent&&<PayModal event={payEvent} onClose={()=>setPayEvent(null)} onConfirm={id=>setBooked(b=>({...b,[id]:true}))} walletBalance={walletBalance} onUseCredits={onUseCredits}/>}
+      {payEvent&&<PayModal event={payEvent} onClose={()=>setPayEvent(null)} onConfirm={id=>setBooked(b=>({...b,[id]:true}))} walletBalance={walletBalance} onUseCredits={onUseCredits} onWalletRefresh={onWalletRefresh}/>}
       <div style={{background:`linear-gradient(150deg,${C.rubyDeep},${C.ruby})`,padding:"58px 26px 26px"}}>
         <Sans s={{color:"rgba(255,255,255,0.7)",fontSize:F.sm,letterSpacing:"0.16em",display:"block",marginBottom:8}}>DISCOVER & BOOK</Sans>
         <Serif as="h1" s={{color:"white",fontSize:F.hero,fontWeight:700,display:"block",marginBottom:6}}>My Program</Serif>

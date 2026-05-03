@@ -1,39 +1,81 @@
 'use client';
 // src/screens/CircleScreen.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { C, F } from '../lib/constants';
 import { Serif, Sans, Btn, Chip } from './UI';
 import { api } from '../lib/api';
 
-const CIRCLES=[
-  {id:1,name:"Morning Blossoms",topic:"Balance & Movement",members:12,emoji:"🌸",color:C.ruby},
-  {id:2,name:"Nourish Together",topic:"Nutrition & Recipes",members:8,emoji:"🥗",color:C.sage},
-  {id:3,name:"Mind Matters",topic:"Cognitive Health",members:15,emoji:"🧠",color:C.teal},
-  {id:4,name:"Travel & Adventure",topic:"Travel after 60",members:10,emoji:"✈️",color:C.indigo},
-  {id:5,name:"Sleep Sisters",topic:"Sleep & Recovery",members:6,emoji:"🌙",color:C.lavender},
-  {id:6,name:"Giving Back",topic:"Volunteering & Purpose",members:9,emoji:"🤝",color:C.gold},
-];
-const FEED=[
-  {circle:"Morning Blossoms",author:"Diane",av:"D",ac:C.ruby,time:"2h ago",text:"Did the balance exercises at home — first time in months I didn't hold the countertop. Tiny win but HUGE! 🎉",likes:11,topic:"Balance",replies:4},
-  {circle:"Mind Matters",author:"Carol",av:"C",ac:C.teal,time:"4h ago",text:"The memory garden session — I remembered all 12 words! Dr Nair said I'm in the top third of the group.",likes:18,topic:"Cognitive",replies:6},
-  {circle:"Morning Blossoms",author:"Ruth",av:"R",ac:C.gold,time:"1d ago",text:"Reminder: outdoor walk Saturday at Gage Park, 9am. Helen and I will save spots at the café after. 🌿",likes:9,topic:"Social",replies:3},
-];
-const CEVENTS=[
-  {name:"Gage Park Morning Walk",circle:"Morning Blossoms",date:"Sat Mar 15",time:"9:00 AM",going:8,total:15,icon:"🚶‍♀️",color:C.ruby,avs:["D","H","C","R"]},
-  {name:"Book Discussion — March",circle:"Mind Matters",date:"Wed Mar 19",time:"4:00 PM",going:5,total:12,icon:"📚",color:C.teal,avs:["C","P","M"]},
-  {name:"Spring Potluck Lunch",circle:"Nourish Together",date:"Sun Mar 23",time:"12:00 PM",going:6,total:10,icon:"🥘",color:C.sage,avs:["B","J","N","S"]},
+const CIRCLE_COLORS = { '1': C.ruby, '2': C.sage, '3': C.teal, '4': C.indigo, '5': C.lavender, '6': C.gold };
+const CIRCLES_DEFAULT = [
+  { id:'1', name:'Morning Blossoms',   topic:'Balance & Movement',     emoji:'🌸', joined:false },
+  { id:'2', name:'Nourish Together',   topic:'Nutrition & Recipes',     emoji:'🥗', joined:false },
+  { id:'3', name:'Mind Matters',       topic:'Cognitive Health',        emoji:'🧠', joined:false },
+  { id:'4', name:'Travel & Adventure', topic:'Travel after 60',         emoji:'✈️', joined:false },
+  { id:'5', name:'Sleep Sisters',      topic:'Sleep & Recovery',        emoji:'🌙', joined:false },
+  { id:'6', name:'Giving Back',        topic:'Volunteering & Purpose',  emoji:'🤝', joined:false },
 ];
 
 export default function CircleScreen({kycVerified,onStartKYC}){
   const [view,setView]=useState("feed");
-  const [liked,setLiked]=useState({});
-  const [joined,setJoined]=useState({1:true,3:true});
-  const [rsvp,setRsvp]=useState({});
+  const [circles,setCircles]=useState(CIRCLES_DEFAULT);
+  const [events,setEvents]=useState([]);
+  const [feed,setFeed]=useState([]);
+  const [feedCircleId,setFeedCircleId]=useState(null);
+  const [newPost,setNewPost]=useState('');
+  const [posting,setPosting]=useState(false);
 
-  // KYC gate shown when user tries to join a circle
-  function handleJoin(id){
+  useEffect(()=>{ (async()=>{
+    try { const r = await api.circles.list(); if (r?.circles) setCircles(r.circles.map(c=>({...c,color:CIRCLE_COLORS[c.id]||C.ruby}))); } catch(_){}
+    try { const r = await api.circles.getEvents(); if (r?.events) setEvents(r.events); } catch(_){}
+  })(); },[]);
+
+  // Pick first joined circle for feed view
+  useEffect(()=>{
+    const j = circles.find(c=>c.joined);
+    if (j) setFeedCircleId(j.id);
+  },[circles]);
+
+  useEffect(()=>{ (async()=>{
+    if (!feedCircleId) { setFeed([]); return; }
+    try { const r = await api.circles.getPosts(feedCircleId); if (r?.posts) setFeed(r.posts); } catch(_){}
+  })(); },[feedCircleId]);
+
+  async function handleJoin(id){
     if(!kycVerified){onStartKYC();return;}
-    setJoined(j=>({...j,[id]:!j[id]}));
+    const target = circles.find(c=>c.id===id);
+    try {
+      if (target?.joined) await api.circles.leave(id);
+      else await api.circles.join(id);
+      setCircles(cs=>cs.map(c=>c.id===id?{...c,joined:!c.joined}:c));
+    } catch (err) {
+      alert(err?.message || 'Failed to update circle membership.');
+    }
+  }
+
+  async function toggleLike(post){
+    try {
+      const r = await api.circles.likePost(post.id);
+      setFeed(fs=>fs.map(p=>p.id===post.id?{...p,liked:r?.liked,likes:(p.likes||0)+(r?.liked?1:-1)}:p));
+    } catch(_){}
+  }
+
+  async function submitPost(){
+    if (!feedCircleId || !newPost.trim()) return;
+    setPosting(true);
+    try {
+      const r = await api.circles.createPost(feedCircleId, { text: newPost.trim() });
+      if (r?.post) setFeed(fs=>[{ ...r.post, author: 'You', likes: 0, liked: false }, ...fs]);
+      setNewPost('');
+    } catch (err) {
+      alert(err?.message || 'Failed to post.');
+    } finally { setPosting(false); }
+  }
+
+  async function handleRsvp(eventId, status){
+    try {
+      await api.circles.rsvp(eventId, status);
+      setEvents(es=>es.map(e=>e.id===eventId?{...e, my_status: status, going: e.going + (status==='going'?1:0)}:e));
+    } catch(_){}
   }
 
   return(
@@ -55,24 +97,34 @@ export default function CircleScreen({kycVerified,onStartKYC}){
 
       {view==="feed"&&(
         <div style={{padding:"22px 24px",display:"flex",flexDirection:"column",gap:16}}>
-          <div style={{background:"white",borderRadius:22,padding:"18px 20px",boxShadow:"0 3px 14px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:46,height:46,borderRadius:"50%",background:C.ruby,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontFamily:"'Cormorant Garamond',serif",fontSize:F.xl,fontWeight:700,flexShrink:0}}>M</div>
-            <div style={{flex:1,background:C.blush,borderRadius:14,padding:"14px 18px",color:C.muted,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,fontStyle:"italic"}}>Share something with your circle…</div>
-          </div>
-          {FEED.map((p,i)=>(
-            <div key={i} style={{background:"white",borderRadius:24,padding:24,boxShadow:"0 3px 14px rgba(0,0,0,0.05)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-                <div style={{width:48,height:48,borderRadius:"50%",background:p.ac,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontFamily:"'Cormorant Garamond',serif",fontSize:F.xl,fontWeight:700,flexShrink:0}}>{p.av}</div>
-                <div style={{flex:1}}><Serif s={{fontSize:F.lg,color:C.slate,display:"block"}}>{p.author}</Serif><Sans s={{fontSize:F.sm,color:C.muted}}>{p.circle} · {p.time}</Sans></div>
-                <Chip color={p.ac} bg={p.ac+"15"}>{p.topic}</Chip>
-              </div>
-              <Sans as="p" s={{fontSize:F.md,color:C.slate,lineHeight:1.8,margin:"0 0 18px"}}>{p.text}</Sans>
-              <div style={{display:"flex",gap:22,paddingTop:14,borderTop:`1px solid ${C.faint}`}}>
-                <button onClick={()=>setLiked(l=>({...l,[i]:!l[i]}))} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:liked[i]?C.ruby:C.muted,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,fontWeight:600,padding:0}}><span style={{fontSize:22}}>{liked[i]?"♥":"♡"}</span>{p.likes+(liked[i]?1:0)}</button>
-                <button style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:C.muted,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,padding:0}}>💬 {p.replies}</button>
-              </div>
+          {!feedCircleId ? (
+            <div style={{background:"white",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 3px 14px rgba(0,0,0,0.06)"}}>
+              <div style={{fontSize:36,marginBottom:10}}>❋</div>
+              <Sans s={{fontSize:F.md,color:C.muted,lineHeight:1.6}}>Join a Circle to see and share posts.</Sans>
             </div>
-          ))}
+          ) : (
+            <>
+              <div style={{background:"white",borderRadius:22,padding:"18px 20px",boxShadow:"0 3px 14px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:46,height:46,borderRadius:"50%",background:C.ruby,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontFamily:"'Cormorant Garamond',serif",fontSize:F.xl,fontWeight:700,flexShrink:0}}>M</div>
+                <input type="text" value={newPost} onChange={e=>setNewPost(e.target.value)} placeholder="Share something with your circle…" style={{flex:1,background:C.blush,borderRadius:14,padding:"14px 18px",color:C.slate,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,border:"none",outline:"none"}}/>
+                <Btn onClick={submitPost} disabled={posting||!newPost.trim()} s={{padding:"10px 14px",fontSize:F.sm}}>{posting?'…':'Post'}</Btn>
+              </div>
+              {feed.length===0 && <div style={{background:"white",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 3px 14px rgba(0,0,0,0.06)"}}><Sans s={{fontSize:F.md,color:C.muted}}>Be the first to share in this circle.</Sans></div>}
+              {feed.map(p=>{ const ac=CIRCLE_COLORS[p.circle_id]||C.ruby; const av=(p.author||'M')[0].toUpperCase(); const time=new Date(p.created_at).toLocaleDateString('en-CA',{month:'short',day:'numeric'}); return (
+                <div key={p.id} style={{background:"white",borderRadius:24,padding:24,boxShadow:"0 3px 14px rgba(0,0,0,0.05)"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+                    <div style={{width:48,height:48,borderRadius:"50%",background:ac,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontFamily:"'Cormorant Garamond',serif",fontSize:F.xl,fontWeight:700,flexShrink:0}}>{av}</div>
+                    <div style={{flex:1}}><Serif s={{fontSize:F.lg,color:C.slate,display:"block"}}>{p.author}</Serif><Sans s={{fontSize:F.sm,color:C.muted}}>{time}</Sans></div>
+                    {p.topic&&<Chip color={ac} bg={ac+"15"}>{p.topic}</Chip>}
+                  </div>
+                  <Sans as="p" s={{fontSize:F.md,color:C.slate,lineHeight:1.8,margin:"0 0 18px"}}>{p.text}</Sans>
+                  <div style={{display:"flex",gap:22,paddingTop:14,borderTop:`1px solid ${C.faint}`}}>
+                    <button onClick={()=>toggleLike(p)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:p.liked?C.ruby:C.muted,fontFamily:"'DM Sans',sans-serif",fontSize:F.md,fontWeight:600,padding:0}}><span style={{fontSize:22}}>{p.liked?"♥":"♡"}</span>{p.likes||0}</button>
+                  </div>
+                </div>
+              );})}
+            </>
+          )}
         </div>
       )}
 
@@ -88,31 +140,31 @@ export default function CircleScreen({kycVerified,onStartKYC}){
               </div>
             </div>
           )}
-          {CIRCLES.map(c=>(
+          {circles.map(c=>{ const color=c.color||CIRCLE_COLORS[c.id]||C.ruby; return (
             <div key={c.id} style={{background:"white",borderRadius:24,padding:"20px 22px",boxShadow:"0 3px 14px rgba(0,0,0,0.05)",display:"flex",alignItems:"center",gap:16}}>
-              <div style={{width:56,height:56,borderRadius:18,background:c.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,flexShrink:0}}>{c.emoji}</div>
-              <div style={{flex:1}}><Serif s={{fontSize:F.lg,color:C.slate,display:"block",marginBottom:2}}>{c.name}</Serif><Sans s={{fontSize:F.md,color:C.muted,display:"block"}}>{c.topic}</Sans><Sans s={{fontSize:F.sm,color:C.muted}}>{c.members} members</Sans></div>
-              <button onClick={()=>handleJoin(c.id)} style={{background:joined[c.id]?C.blush:"transparent",color:joined[c.id]?C.ruby:C.slate,border:`2px solid ${joined[c.id]?C.ruby:C.faint}`,borderRadius:14,padding:"11px 18px",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,fontWeight:600,cursor:"pointer",transition:"all 0.2s",whiteSpace:"nowrap"}}>
-                {!kycVerified?"🔒 Join":(joined[c.id]?"✓ Joined":"Join")}
+              <div style={{width:56,height:56,borderRadius:18,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,flexShrink:0}}>{c.emoji}</div>
+              <div style={{flex:1}}><Serif s={{fontSize:F.lg,color:C.slate,display:"block",marginBottom:2}}>{c.name}</Serif><Sans s={{fontSize:F.md,color:C.muted,display:"block"}}>{c.topic}</Sans></div>
+              <button onClick={()=>handleJoin(c.id)} style={{background:c.joined?C.blush:"transparent",color:c.joined?C.ruby:C.slate,border:`2px solid ${c.joined?C.ruby:C.faint}`,borderRadius:14,padding:"11px 18px",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,fontWeight:600,cursor:"pointer",transition:"all 0.2s",whiteSpace:"nowrap"}}>
+                {!kycVerified?"🔒 Join":(c.joined?"✓ Joined":"Join")}
               </button>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
       {view==="events"&&(
         <div style={{padding:"22px 24px",display:"flex",flexDirection:"column",gap:16}}>
           <Serif as="h2" s={{fontSize:F.xl,color:C.slate,display:"block",marginBottom:4}}>Upcoming Circle Events</Serif>
-          {CEVENTS.map((ev,i)=>(
-            <div key={i} style={{background:"white",borderRadius:24,overflow:"hidden",boxShadow:"0 3px 16px rgba(0,0,0,0.06)"}}>
-              <div style={{background:ev.color,padding:"13px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Sans s={{color:"white",fontSize:F.sm,letterSpacing:"0.1em",fontWeight:600}}>{ev.circle.toUpperCase()}</Sans><Chip color="white" bg="rgba(255,255,255,0.22)" s={{fontSize:F.sm}}>{ev.going}/{ev.total} going</Chip></div>
+          {events.length===0 && <div style={{background:"white",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 3px 14px rgba(0,0,0,0.06)"}}><Sans s={{fontSize:F.md,color:C.muted}}>No upcoming events.</Sans></div>}
+          {events.map(ev=>{ const color=C.ruby; const going=ev.my_status==='going'; return (
+            <div key={ev.id} style={{background:"white",borderRadius:24,overflow:"hidden",boxShadow:"0 3px 16px rgba(0,0,0,0.06)"}}>
+              <div style={{background:color,padding:"13px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><Sans s={{color:"white",fontSize:F.sm,letterSpacing:"0.1em",fontWeight:600}}>{(ev.circle||'').toUpperCase()}</Sans><Chip color="white" bg="rgba(255,255,255,0.22)" s={{fontSize:F.sm}}>{ev.going||0}/{ev.total||0} going</Chip></div>
               <div style={{padding:"20px 22px"}}>
                 <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:16}}><span style={{fontSize:30,flexShrink:0}}>{ev.icon}</span><div style={{flex:1}}><Serif s={{fontSize:F.lg,color:C.slate,display:"block",marginBottom:5}}>{ev.name}</Serif><Sans s={{fontSize:F.md,color:C.muted}}>📅 {ev.date} · {ev.time}</Sans></div></div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:18}}>{ev.avs.slice(0,4).map((l,j)=><div key={j} style={{width:36,height:36,borderRadius:"50%",background:[C.ruby,C.gold,C.teal,C.indigo][j%4],display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontFamily:"'Cormorant Garamond',serif",fontSize:F.md,fontWeight:700,border:"2px solid white",marginLeft:j>0?-10:0}}>{l}</div>)}{ev.going>4&&<Sans s={{fontSize:F.sm,color:C.muted,marginLeft:8}}>+{ev.going-4} more</Sans>}</div>
-                {rsvp[i]?<div style={{background:C.sagePale,borderRadius:14,padding:"14px",textAlign:"center"}}><Sans s={{color:C.sage,fontWeight:600,fontSize:F.md}}>✓ You're going!</Sans></div>:<div style={{display:"flex",gap:10}}><Btn onClick={()=>setRsvp(r=>({...r,[i]:true}))} s={{flex:1,padding:"14px 0",fontSize:F.md,background:ev.color}}>RSVP ✦</Btn><Btn v="ghost" s={{padding:"14px 18px",fontSize:F.md}}>Maybe</Btn></div>}
+                {going?<div style={{background:C.sagePale,borderRadius:14,padding:"14px",textAlign:"center"}}><Sans s={{color:C.sage,fontWeight:600,fontSize:F.md}}>✓ You're going!</Sans></div>:<div style={{display:"flex",gap:10}}><Btn onClick={()=>handleRsvp(ev.id,'going')} s={{flex:1,padding:"14px 0",fontSize:F.md,background:color}}>RSVP ✦</Btn><Btn onClick={()=>handleRsvp(ev.id,'maybe')} v="ghost" s={{padding:"14px 18px",fontSize:F.md}}>Maybe</Btn></div>}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
     </div>
