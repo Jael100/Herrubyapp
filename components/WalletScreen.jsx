@@ -37,7 +37,11 @@ export default function WalletScreen(){
     setTopupLoading(true);
     try {
       const result = await api.wallet.initiateTopup(selPkg.id);
-      if (result.ok) {
+      if (result?.mode === 'stripe' && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+      if (result?.ok) {
         addCredits(selPkg.credits, {date:"Today",desc:`Top-up: ${selPkg.label} (${selPkg.credits} credits)`,credits:+selPkg.credits,icon:"💳",color:C.indigo});
         setTopupDone(true);
         refresh();
