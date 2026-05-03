@@ -78,7 +78,8 @@ function PayModal({event,onClose,onConfirm,walletBalance=0,onUseCredits}){
     </div>
   );
 }
-export default function ProgramsScreen({walletBalance=0,onUseCredits,kycVerified=false,onStartKYC}){
+export default function ProgramsScreen({kycVerified=false,onStartKYC}){
+  const { balance: walletBalance, deductCredits: onUseCredits } = useWallet();
   const [cat,setCat]=useState("All");
   const [schedule,setSchedule]=useState("Any time");
   const [expanded,setExpanded]=useState(null);

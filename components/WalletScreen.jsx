@@ -11,12 +11,12 @@ const CREDIT_PACKS=[{id:"p1",credits:5,price:100,label:"Starter",desc:"Try a pro
 
 
 export default function WalletScreen(){
-  const { balance, refresh, addCredits, deductCredits } = useWallet();
+  const { balance, transactions, refresh, addCredits, deductCredits } = useWallet();
   const [wView,setWView]=useState("overview");
   const [redeemed,setRedeemed]=useState({});
   const [showTopUp,setShowTopUp]=useState(false);
   const [showGift,setShowGift]=useState(false);
-  const [txHistory,setTxHistory]=useState([]);
+  const [localTx,setLocalTx]=useState([]);
   const [selPkg,setSelPkg]=useState(null);
   const [topupDone,setTopupDone]=useState(false);
   const [topupLoading,setTopupLoading]=useState(false);
@@ -171,15 +171,15 @@ export default function WalletScreen(){
         <div style={{background:C.goldPale,borderRadius:18,padding:"14px 18px",border:`1.5px solid ${C.goldLight}`,marginBottom:20,display:"flex",gap:12,alignItems:"center"}}><span style={{fontSize:24}}>💡</span><Sans s={{fontSize:F.md,color:C.slate,lineHeight:1.65}}><strong>{balance} credits.</strong> Each = $20. <span onClick={()=>setShowTopUp(true)} style={{color:C.ruby,fontWeight:600,cursor:"pointer"}}>Top up here.</span></Sans></div>
         {["Programme","Sessions","Experiences","Learning","Coaching"].map(cat=>{
           const items=WALLET_ITEMS.filter(w=>w.cat===cat);if(!items.length)return null;
-          return <div key={cat} style={{marginBottom:24}}><Serif as="h3" s={{fontSize:F.xl,color:C.slate,display:"block",marginBottom:14}}>{cat}</Serif>{items.map(item=>{const canAfford=balance>=item.credits,done=redeemed[item.id];return <div key={item.id} style={{background:"white",borderRadius:20,padding:"18px 20px",boxShadow:"0 3px 14px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:14,opacity:canAfford?1:0.6}}><div style={{width:52,height:52,borderRadius:16,background:item.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>{item.icon}</div><div style={{flex:1}}><Serif s={{fontSize:F.md,color:C.slate,display:"block",marginBottom:6}}>{item.name}</Serif><div style={{display:"flex",gap:8,alignItems:"center"}}><Chip color={item.color} bg={item.color+"15"}>{item.credits} credit{item.credits>1?"s":""}</Chip><Sans s={{fontSize:F.sm,color:C.muted}}>= ${item.credits*20}</Sans></div></div>{done?<div style={{background:C.sagePale,borderRadius:12,padding:"10px 14px",flexShrink:0}}><Sans s={{color:C.sage,fontWeight:600,fontSize:F.sm}}>✓ Redeemed</Sans></div>:<Btn onClick={()=>{if(canAfford){setRedeemed(r=>({...r,[item.id]:true}));deductCredits(item.credits);setTxHistory(h=>[{date:"Today",desc:item.name,credits:-item.credits,icon:item.icon,color:item.color},...h]);}else setShowTopUp(true);}} s={{padding:"11px 18px",fontSize:F.sm,flexShrink:0,background:canAfford?item.color:C.ruby}}>{canAfford?"Redeem":"Top Up"}</Btn>}</div>;})}</div>;
+          return <div key={cat} style={{marginBottom:24}}><Serif as="h3" s={{fontSize:F.xl,color:C.slate,display:"block",marginBottom:14}}>{cat}</Serif>{items.map(item=>{const canAfford=balance>=item.credits,done=redeemed[item.id];return <div key={item.id} style={{background:"white",borderRadius:20,padding:"18px 20px",boxShadow:"0 3px 14px rgba(0,0,0,0.05)",marginBottom:12,display:"flex",alignItems:"center",gap:14,opacity:canAfford?1:0.6}}><div style={{width:52,height:52,borderRadius:16,background:item.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>{item.icon}</div><div style={{flex:1}}><Serif s={{fontSize:F.md,color:C.slate,display:"block",marginBottom:6}}>{item.name}</Serif><div style={{display:"flex",gap:8,alignItems:"center"}}><Chip color={item.color} bg={item.color+"15"}>{item.credits} credit{item.credits>1?"s":""}</Chip><Sans s={{fontSize:F.sm,color:C.muted}}>= ${item.credits*20}</Sans></div></div>{done?<div style={{background:C.sagePale,borderRadius:12,padding:"10px 14px",flexShrink:0}}><Sans s={{color:C.sage,fontWeight:600,fontSize:F.sm}}>✓ Redeemed</Sans></div>:<Btn onClick={()=>{if(canAfford){setRedeemed(r=>({...r,[item.id]:true}));deductCredits(item.credits);setLocalTx(h=>[{date:"Today",desc:item.name,credits:-item.credits,icon:item.icon,color:item.color},...h]);}else setShowTopUp(true);}} s={{padding:"11px 18px",fontSize:F.sm,flexShrink:0,background:canAfford?item.color:C.ruby}}>{canAfford?"Redeem":"Top Up"}</Btn>}</div>;})}</div>;
         })}
       </div>}
 
-      {wView==="history"&&<div style={{padding:"22px 24px"}}>
+      {wView==="history"&&(()=>{const allTx=[...localTx,...(transactions||[])];return <div style={{padding:"22px 24px"}}>
         <Serif as="h2" s={{fontSize:F.xl,color:C.slate,display:"block",marginBottom:18}}>Credit History</Serif>
-        {txHistory.length === 0 && <div style={{textAlign:"center",padding:"40px 0"}}><span style={{fontSize:48,display:"block",marginBottom:16}}>📋</span><Sans s={{fontSize:F.md,color:C.muted}}>No transactions yet. Top up or redeem a gift code to get started.</Sans></div>}
-        {txHistory.map((t,i)=><div key={i} style={{background:"white",borderRadius:18,padding:"16px 20px",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",marginBottom:12,display:"flex",alignItems:"center",gap:14}}><div style={{width:46,height:46,borderRadius:14,background:t.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{t.icon}</div><div style={{flex:1}}><Sans s={{fontSize:F.xs,color:C.muted,display:"block",marginBottom:3}}>{t.date}</Sans><Sans s={{fontSize:F.md,color:C.slate}}>{t.desc}</Sans></div><Serif s={{fontSize:F.xl,fontWeight:700,color:t.credits>0?C.sage:C.ruby,flexShrink:0}}>{t.credits>0?"+":""}{t.credits}</Serif></div>)}
-      </div>}
+        {allTx.length === 0 && <div style={{textAlign:"center",padding:"40px 0"}}><span style={{fontSize:48,display:"block",marginBottom:16}}>📋</span><Sans s={{fontSize:F.md,color:C.muted}}>No transactions yet. Top up or redeem a gift code to get started.</Sans></div>}
+        {allTx.map((t,i)=><div key={i} style={{background:"white",borderRadius:18,padding:"16px 20px",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",marginBottom:12,display:"flex",alignItems:"center",gap:14}}><div style={{width:46,height:46,borderRadius:14,background:(t.color||C.ruby)+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{t.icon||"◆"}</div><div style={{flex:1}}><Sans s={{fontSize:F.xs,color:C.muted,display:"block",marginBottom:3}}>{t.date}</Sans><Sans s={{fontSize:F.md,color:C.slate}}>{t.desc}</Sans></div><Serif s={{fontSize:F.xl,fontWeight:700,color:t.credits>0?C.sage:C.ruby,flexShrink:0}}>{t.credits>0?"+":""}{t.credits}</Serif></div>)}
+      </div>;})()}
     </div>
   );
 }
