@@ -47,31 +47,48 @@ export async function POST(req) {
     }
 
     // Fallback: instant credit (sandbox / dev only)
-    const { data: wallet } = await supabase
+    const { data: wallet, error: walletError } = await supabase
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (walletError) {
+      console.error('Wallet fetch error:', walletError);
+      return NextResponse.json({ error: 'Failed to fetch wallet' }, { status: 500 });
+    }
 
     const currentBalance = wallet?.balance || 0;
     const newBalance = currentBalance + pack.credits;
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('wallets')
       .upsert({
         user_id: user.id,
         balance: newBalance,
         funding_source: 'self',
+        updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
-    await supabase
+    if (updateError) {
+      console.error('Wallet update error:', updateError);
+      return NextResponse.json({ error: 'Failed to update wallet' }, { status: 500 });
+    }
+
+    const { error: txError } = await supabase
       .from('transactions')
       .insert({
         user_id: user.id,
         type: 'topup',
-        credits: pack.credits,
+        amount: pack.credits,
         description: `Top-up: ${pack.label}`,
+        created_at: new Date().toISOString(),
       });
+
+    if (txError) {
+      console.error('Transaction insert error:', txError);
+      return NextResponse.json({ error: 'Failed to record transaction' }, { status: 500 });
+    }
 
     return NextResponse.json({
       ok: true,

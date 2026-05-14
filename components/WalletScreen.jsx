@@ -1,6 +1,6 @@
 'use client';
 // src/screens/WalletScreen.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { C, F } from '../lib/constants';
 import { Serif, Sans, Btn, Chip, Input } from './UI';
 import { useWallet } from '../lib/WalletContext';
@@ -41,17 +41,31 @@ export default function WalletScreen(){
     if (!selPkg) return;
     setTopupLoading(true);
     try {
-      const result = await api.wallet.initiateTopup(selPkg.id);
+      console.log('Starting top-up for package:', selPkg.id);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Top-up request timed out after 15 seconds')), 15000)
+      );
+      const result = await Promise.race([
+        api.wallet.initiateTopup(selPkg.id),
+        timeoutPromise
+      ]);
+      console.log('Top-up result:', result);
       if (result?.mode === 'stripe' && result.checkoutUrl) {
+        console.log('Redirecting to Stripe...');
         window.location.href = result.checkoutUrl;
         return;
       }
       if (result?.ok) {
+        console.log('Instant credit approved');
         addCredits(selPkg.credits, {date:"Today",desc:`Top-up: ${selPkg.label} (${selPkg.credits} credits)`,credits:+selPkg.credits,icon:"💳",color:C.indigo});
         setTopupDone(true);
         refresh();
+      } else {
+        console.warn('Unexpected result:', result);
+        alert('Unexpected response. Please try again.');
       }
     } catch (err) {
+      console.error('Top-up error:', err);
       alert(err.message || 'Top-up failed. Please try again.');
     }
     setTopupLoading(false);

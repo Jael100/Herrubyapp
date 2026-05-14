@@ -4,8 +4,13 @@ import Providers from '../lib/providers';
 export const metadata = {
   title: 'Her Ruby',
   description: 'Midlife vitality platform for women 40+',
+};
+
+export const viewport = {
   themeColor: '#7D1A1D',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }) {

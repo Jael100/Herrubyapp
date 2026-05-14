@@ -1,6 +1,6 @@
 'use client';
 // src/screens/OnboardScreen.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { C, F } from '../lib/constants';
 import { Serif, Sans, Btn } from './UI';
 
@@ -50,8 +50,15 @@ export default function OnboardScreen({ onComplete }) {
       goals: finalAnswers.goals || [],
       tracked_symptoms: finalAnswers.symptoms || [],
     };
-    await onComplete(payload);
-    setSaving(false);
+
+    console.log('Onboarding complete with:', payload);
+    try {
+      await onComplete(payload);
+    } catch (err) {
+      console.error('Onboarding save failed:', err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
