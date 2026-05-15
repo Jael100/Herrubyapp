@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '../../../lib/supabase-server';
 
@@ -14,9 +15,10 @@ export async function GET(req) {
       .from('wallets')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!wallet) {
+      console.log('No wallet found for user, creating new one');
       const { data: newWallet } = await supabase
         .from('wallets')
         .insert({ user_id: user.id, balance: 0, funding_source: 'self' })
@@ -44,7 +46,7 @@ export async function GET(req) {
         icon: t.type === 'gift_received' ? '🎁' : t.type === 'topup' ? '💳' : t.type === 'employer' ? '💼' : t.type === 'redemption' ? '✦' : '◆',
         color: t.type === 'gift_received' ? '#8B9E6B' : t.type === 'topup' ? '#6B5B8A' : '#B8292F',
       })),
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('Wallet GET error:', err);
     return NextResponse.json({ error: 'Failed to fetch wallet' }, { status: 500 });

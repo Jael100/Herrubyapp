@@ -11,7 +11,7 @@ const CREDIT_PACKS=[{id:"p1",credits:5,price:100,label:"Starter",desc:"Try a pro
 
 
 export default function WalletScreen(){
-  const { balance, transactions, refresh, addCredits, deductCredits } = useWallet();
+  const { balance, setBalance, transactions, refresh, addCredits, deductCredits } = useWallet();
   const [wView,setWView]=useState("overview");
   const [redeemed,setRedeemed]=useState({});
   const [showTopUp,setShowTopUp]=useState(false);
@@ -56,10 +56,9 @@ export default function WalletScreen(){
         return;
       }
       if (result?.ok) {
-        console.log('Instant credit approved');
-        addCredits(selPkg.credits, {date:"Today",desc:`Top-up: ${selPkg.label} (${selPkg.credits} credits)`,credits:+selPkg.credits,icon:"💳",color:C.indigo});
+        if (result.newBalance !== undefined) setBalance(result.newBalance);
+        else addCredits(selPkg.credits, {date:"Today",desc:`Top-up: ${selPkg.label} (${selPkg.credits} credits)`,credits:+selPkg.credits,icon:"💳",color:C.indigo});
         setTopupDone(true);
-        refresh();
       } else {
         console.warn('Unexpected result:', result);
         alert('Unexpected response. Please try again.');
@@ -82,9 +81,9 @@ export default function WalletScreen(){
       });
       if (result.ok) {
         setGiftCode(result.code || '');
-        deductCredits(giftPkg.credits);
+        if (result.newBalance !== undefined) setBalance(result.newBalance);
+        else deductCredits(giftPkg.credits);
         setGiftSent(true);
-        refresh();
       }
     } catch (err) {
       alert(err.message || 'Gift send failed. Please try again.');
@@ -115,8 +114,8 @@ export default function WalletScreen(){
     try {
       const result = await api.wallet.redeemGift(redeemCode.trim());
       setRedeemResult(result);
-      addCredits(result.credits, {date:"Today",desc:`Gift redeemed: ${result.credits} credits`,credits:+result.credits,icon:"🎁",color:C.sage});
-      refresh();
+      if (result.newBalance !== undefined) setBalance(result.newBalance);
+      else addCredits(result.credits, {date:"Today",desc:`Gift redeemed: ${result.credits} credits`,credits:+result.credits,icon:"🎁",color:C.sage});
     } catch (err) {
       setRedeemError(err.message || 'Invalid or already redeemed code.');
     }

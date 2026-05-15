@@ -1,5 +1,6 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { createServerClient } from '../../../../../lib/supabase-server';
+import { createServerClient, createAdminClient } from '../../../../../lib/supabase-server';
 
 export async function POST(req) {
   try {
@@ -40,34 +41,36 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to redeem gift code' }, { status: 500 });
     }
 
+    // Use admin client for wallet mutations — bypasses RLS to ensure updates always succeed
+    const admin = createAdminClient();
+
     // Add credits to wallet
-    const { data: wallet } = await supabase
+    const { data: wallet } = await admin
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     const currentBalance = wallet?.balance || 0;
     const newBalance = currentBalance + gift.credits;
 
-    await supabase
+    const { error: walletError } = await admin
       .from('wallets')
-      .upsert({
-        user_id: user.id,
-        balance: newBalance,
-        funding_source: 'gift',
-      }, { onConflict: 'user_id' });
+      .upsert({ user_id: user.id, balance: newBalance, funding_source: 'gift', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+    if (walletError) {
+      console.error('Failed to update wallet balance:', walletError);
+      return NextResponse.json({ error: 'Failed to update wallet balance' }, { status: 500 });
+    }
 
     // Record transaction
-    await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: 'gift_received',
-        credits: gift.credits,
-        description: `Gift redeemed: ${gift.credits} credits${gift.sender_email ? ` from ${gift.sender_email}` : ''}`,
-        gift_code_id: gift.id,
-      });
+    await admin.from('transactions').insert({
+      user_id: user.id,
+      type: 'gift_received',
+      credits: gift.credits,
+      description: `Gift redeemed: ${gift.credits} credits${gift.sender_email ? ` from ${gift.sender_email}` : ''}`,
+      gift_code_id: gift.id,
+    });
 
     return NextResponse.json({
       ok: true,

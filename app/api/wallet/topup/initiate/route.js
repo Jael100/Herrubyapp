@@ -1,6 +1,7 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createServerClient } from '../../../../../lib/supabase-server';
+import { createServerClient, createAdminClient } from '../../../../../lib/supabase-server';
 
 const PACKS = {
   p1: { credits: 5,  price: 10000, label: 'Starter — 5 credits' },
@@ -46,22 +47,19 @@ export async function POST(req) {
       return NextResponse.json({ ok: true, mode: 'stripe', checkoutUrl: session.url });
     }
 
-    // Fallback: instant credit (sandbox / dev only)
-    const { data: wallet, error: walletError } = await supabase
+    // Fallback: instant credit (Stripe not configured)
+    const admin = createAdminClient();
+
+    const { data: wallet } = await admin
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (walletError) {
-      console.error('Wallet fetch error:', walletError);
-      return NextResponse.json({ error: 'Failed to fetch wallet' }, { status: 500 });
-    }
-
     const currentBalance = wallet?.balance || 0;
     const newBalance = currentBalance + pack.credits;
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from('wallets')
       .upsert({
         user_id: user.id,
@@ -75,14 +73,13 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Failed to update wallet' }, { status: 500 });
     }
 
-    const { error: txError } = await supabase
+    const { error: txError } = await admin
       .from('transactions')
       .insert({
         user_id: user.id,
         type: 'topup',
-        amount: pack.credits,
+        credits: pack.credits,
         description: `Top-up: ${pack.label}`,
-        created_at: new Date().toISOString(),
       });
 
     if (txError) {

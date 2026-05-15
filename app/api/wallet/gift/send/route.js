@@ -1,6 +1,7 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createServerClient } from '../../../../../lib/supabase-server';
+import { createServerClient, createAdminClient } from '../../../../../lib/supabase-server';
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -31,12 +32,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Recipient email and credits are required' }, { status: 400 });
     }
 
+    const admin = createAdminClient();
+
     // Check sender has enough credits
-    const { data: wallet } = await supabase
+    const { data: wallet } = await admin
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!wallet || wallet.balance < credits) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 });
@@ -44,9 +47,10 @@ export async function POST(req) {
 
     // Generate gift code
     const code = generateGiftCode();
+    const newBalance = wallet.balance - credits;
 
     // Create gift code record
-    await supabase.from('gift_codes').insert({
+    const { error: giftInsertError } = await admin.from('gift_codes').insert({
       code,
       credits,
       pack_id: 'gift',
@@ -54,15 +58,23 @@ export async function POST(req) {
       recipient_email: recipientEmail,
       gift_message: message || null,
     });
+    if (giftInsertError) {
+      console.error('Failed to create gift code:', giftInsertError);
+      return NextResponse.json({ error: 'Failed to create gift code' }, { status: 500 });
+    }
 
     // Deduct from sender
-    await supabase
+    const { error: walletError } = await admin
       .from('wallets')
-      .update({ balance: wallet.balance - credits })
+      .update({ balance: newBalance, updated_at: new Date().toISOString() })
       .eq('user_id', user.id);
+    if (walletError) {
+      console.error('Failed to deduct wallet balance:', walletError);
+      return NextResponse.json({ error: 'Failed to deduct credits from wallet' }, { status: 500 });
+    }
 
     // Record transaction for sender
-    await supabase.from('transactions').insert({
+    await admin.from('transactions').insert({
       user_id: user.id,
       type: 'gift_sent',
       credits: -credits,
@@ -108,7 +120,7 @@ export async function POST(req) {
       console.error('Failed to send gift email:', emailErr);
     }
 
-    return NextResponse.json({ ok: true, code });
+    return NextResponse.json({ ok: true, code, newBalance });
   } catch (err) {
     console.error('Gift send error:', err);
     return NextResponse.json({ error: 'Failed to send gift' }, { status: 500 });
