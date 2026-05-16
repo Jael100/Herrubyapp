@@ -26,6 +26,7 @@ export default function WalletScreen(){
   const [giftSent,setGiftSent]=useState(false);
   const [giftLoading,setGiftLoading]=useState(false);
   const [giftCode,setGiftCode]=useState("");
+  const [giftEmailSent,setGiftEmailSent]=useState(false);
   // Redeem gift code state
   const [redeemCode,setRedeemCode]=useState("");
   const [redeemLoading,setRedeemLoading]=useState(false);
@@ -81,6 +82,7 @@ export default function WalletScreen(){
       });
       if (result.ok) {
         setGiftCode(result.code || '');
+        setGiftEmailSent(result.emailSent === true);
         if (result.newBalance !== undefined) setBalance(result.newBalance);
         else deductCredits(giftPkg.credits);
         setGiftSent(true);
@@ -151,7 +153,7 @@ export default function WalletScreen(){
           <div style={{marginTop:8,marginBottom:20}}><Sans s={{fontSize:F.sm,color:C.muted,letterSpacing:"0.12em",fontWeight:600,display:"block",marginBottom:8}}>PERSONAL MESSAGE (optional)</Sans><textarea value={giftMsg} onChange={e=>setGiftMsg(e.target.value)} placeholder="e.g. Mum — this is for you. You deserve to feel amazing. 💕" rows={3} style={{width:"100%",border:`2px solid ${C.faint}`,borderRadius:14,padding:"14px 16px",fontFamily:"'DM Sans',sans-serif",fontSize:F.md,color:C.slate,resize:"none",outline:"none",background:"white",boxSizing:"border-box",lineHeight:1.6}}/></div>
           <Btn onClick={handleGiftSend} disabled={!giftEmail||!giftPkg||giftLoading} s={{width:"100%",padding:"16px 0",fontSize:F.lg,background:C.gold}}>{giftLoading?'Sending…':`Send Gift ${giftPkg?'$'+giftPkg.price:''} ✦`}</Btn>
           {balance < (giftPkg?.credits||0) && giftPkg && <Sans s={{fontSize:F.sm,color:C.ruby,display:"block",textAlign:"center",marginTop:10}}>You need {(giftPkg.credits - balance)} more credits. <span onClick={()=>{setShowGift(false);setShowTopUp(true);}} style={{fontWeight:600,cursor:"pointer",textDecoration:"underline"}}>Top up first.</span></Sans>}
-        </div>:<div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:56,marginBottom:20}}>🎁</div><Serif s={{fontSize:F.xxl,color:C.slate,display:"block",marginBottom:12}}>Gift sent!</Serif><Sans s={{fontSize:F.md,color:C.muted,display:"block",lineHeight:1.8,marginBottom:22}}>{giftEmail} will receive their {giftPkg?.label} by email with a redemption code. What a beautiful thing to do. 💕</Sans>{giftCode&&<div style={{background:C.blush,borderRadius:14,padding:"14px 18px",marginBottom:20}}><Sans s={{fontSize:F.sm,color:C.muted,display:"block",marginBottom:4}}>Gift code:</Sans><Sans s={{fontSize:F.xl,color:C.ruby,fontWeight:700,letterSpacing:"0.1em"}}>{giftCode}</Sans></div>}<Btn onClick={()=>{setShowGift(false);setGiftSent(false);setGiftCode("");}} s={{width:"100%",padding:"16px 0",fontSize:F.lg}}>Done ✦</Btn></div>}
+        </div>:<div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:56,marginBottom:20}}>🎁</div><Serif s={{fontSize:F.xxl,color:C.slate,display:"block",marginBottom:12}}>Gift sent!</Serif><Sans s={{fontSize:F.md,color:C.muted,display:"block",lineHeight:1.8,marginBottom:12}}>{giftEmailSent?<>📧 An email with the redemption code has been sent to <strong>{giftEmail}</strong>. What a beautiful thing to do. 💕</>:<>Gift created! Share this code directly with <strong>{giftEmail}</strong> — the email couldn't be delivered right now.</>}</Sans>{giftCode&&<div style={{background:C.blush,borderRadius:14,padding:"14px 18px",marginBottom:20}}><Sans s={{fontSize:F.sm,color:C.muted,display:"block",marginBottom:4}}>Gift code:</Sans><Sans s={{fontSize:F.xl,color:C.ruby,fontWeight:700,letterSpacing:"0.1em"}}>{giftCode}</Sans></div>}<Btn onClick={()=>{setShowGift(false);setGiftSent(false);setGiftCode("");setGiftEmailSent(false);}} s={{width:"100%",padding:"16px 0",fontSize:F.lg}}>Done ✦</Btn></div>}
       </div>
     </div>
   );}

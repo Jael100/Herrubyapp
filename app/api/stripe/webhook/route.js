@@ -72,13 +72,40 @@ export async function POST(req) {
         }
       }
 
-      // Booking flow
-      if (meta.purpose === 'booking' && meta.booking_id) {
-        await admin
+      // Booking flow — confirm booking and deduct credits from wallet
+      if (meta.purpose === 'booking' && meta.booking_id && meta.user_id) {
+        // Fetch booking to check status and get credits_spent (idempotency guard)
+        const { data: booking } = await admin
           .from('bookings')
-          .update({ status: 'confirmed' })
+          .select('status, credits_spent, program_name')
           .eq('id', meta.booking_id)
-          .eq('status', 'pending');
+          .maybeSingle();
+
+        if (booking?.status === 'pending') {
+          await admin
+            .from('bookings')
+            .update({ status: 'confirmed' })
+            .eq('id', meta.booking_id);
+
+          const creditsToDeduct = booking.credits_spent || Number(meta.credits) || 0;
+          if (creditsToDeduct > 0) {
+            const { data: wallet } = await admin
+              .from('wallets')
+              .select('balance')
+              .eq('user_id', meta.user_id)
+              .maybeSingle();
+            const newBalance = Math.max(0, (wallet?.balance ?? 0) - creditsToDeduct);
+            await admin
+              .from('wallets')
+              .upsert({ user_id: meta.user_id, balance: newBalance, funding_source: 'self' }, { onConflict: 'user_id' });
+            await admin.from('transactions').insert({
+              user_id: meta.user_id,
+              type: 'booking_stripe',
+              credits: -creditsToDeduct,
+              description: `Booking: ${booking.program_name || meta.program_id} (Stripe)`,
+            });
+          }
+        }
       }
     }
 

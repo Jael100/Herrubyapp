@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createServerClient } from '../../../../../lib/supabase-server';
+import { createServerClient, createAdminClient } from '../../../../../lib/supabase-server';
 
 const PACKS = {
   p1: { credits: 5,  label: 'Starter — 5 credits' },
@@ -42,31 +42,33 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Session does not belong to user' }, { status: 403 });
     }
 
+    const admin = createAdminClient();
+
     // Idempotency — skip if a transaction for this session already exists
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('transactions')
       .select('id')
       .eq('user_id', user.id)
       .eq('description', `Top-up: ${pack.label} [${sid}]`)
       .maybeSingle();
     if (existing) {
-      const { data: w } = await supabase.from('wallets').select('balance').eq('user_id', user.id).single();
-      return NextResponse.json({ ok: true, alreadyApplied: true, newBalance: w?.balance ?? 0 });
+      const { data: w } = await admin.from('wallets').select('balance').eq('user_id', user.id).maybeSingle();
+      return NextResponse.json({ ok: true, alreadyApplied: true, credits: pack.credits, newBalance: w?.balance ?? 0 });
     }
 
-    const { data: wallet } = await supabase
+    const { data: wallet } = await admin
       .from('wallets')
       .select('balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     const currentBalance = wallet?.balance || 0;
     const newBalance = currentBalance + pack.credits;
 
-    await supabase
+    await admin
       .from('wallets')
       .upsert({ user_id: user.id, balance: newBalance, funding_source: 'self' }, { onConflict: 'user_id' });
 
-    await supabase
+    await admin
       .from('transactions')
       .insert({
         user_id: user.id,

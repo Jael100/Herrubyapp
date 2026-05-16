@@ -82,6 +82,8 @@ export async function POST(req) {
     });
 
     // Send gift email
+    let emailSent = false;
+    let emailError = null;
     try {
       const resend = getResend();
       if (!resend) throw new Error('RESEND_API_KEY not configured');
@@ -116,11 +118,13 @@ export async function POST(req) {
           </div>
         `,
       });
+      emailSent = true;
     } catch (emailErr) {
+      emailError = emailErr.message;
       console.error('Failed to send gift email:', emailErr);
     }
 
-    return NextResponse.json({ ok: true, code, newBalance });
+    return NextResponse.json({ ok: true, code, newBalance, emailSent, emailError });
   } catch (err) {
     console.error('Gift send error:', err);
     return NextResponse.json({ error: 'Failed to send gift' }, { status: 500 });
